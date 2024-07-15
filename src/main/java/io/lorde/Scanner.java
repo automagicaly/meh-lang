@@ -1,11 +1,9 @@
-package org.example;
+package io.lorde;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.example.TokenType.*;
 
 class Scanner {
     private static final Map<String, TokenType> keywords;
@@ -18,40 +16,40 @@ class Scanner {
 
     static {
         keywords = new HashMap<>();
-        keywords.put("let", LET);
-        keywords.put("return", RETURN);
-        keywords.put("if", IF);
-        keywords.put("else", ELSE);
-        keywords.put("and", AND);
-        keywords.put("or", OR);
-        keywords.put("not", NOT);
-        keywords.put("void", VOID);
-        keywords.put("bool", BOOL);
-        keywords.put("true", TRUE);
-        keywords.put("false", FALSE);
-        keywords.put("byte", BYTE);
-        keywords.put("float", FLOAT);
-        keywords.put("double", DOUBLE);
-        keywords.put("file", FILE);
-        keywords.put("as", AS);
-        keywords.put("is", IS);
-        keywords.put("any", ANY);
+        keywords.put("let", TokenType.LET);
+        keywords.put("return", TokenType.RETURN);
+        keywords.put("if", TokenType.IF);
+        keywords.put("else", TokenType.ELSE);
+        keywords.put("and", TokenType.AND);
+        keywords.put("or", TokenType.OR);
+        keywords.put("not", TokenType.NOT);
+        keywords.put("void", TokenType.VOID);
+        keywords.put("bool", TokenType.BOOL);
+        keywords.put("true", TokenType.TRUE);
+        keywords.put("false", TokenType.FALSE);
+        keywords.put("byte", TokenType.BYTE);
+        keywords.put("float", TokenType.FLOAT);
+        keywords.put("double", TokenType.DOUBLE);
+        keywords.put("file", TokenType.FILE);
+        keywords.put("as", TokenType.AS);
+        keywords.put("is", TokenType.IS);
+        keywords.put("any", TokenType.ANY);
 
         trivialTokens = new HashMap<>();
-        trivialTokens.put('%', PERCENT);
-        trivialTokens.put(',', COMMA);
-        trivialTokens.put('&', AMP);
-        trivialTokens.put('|', PIPE);
-        trivialTokens.put('+', PLUS);
-        trivialTokens.put(':', COLON);
-        trivialTokens.put('*', STAR);
-        trivialTokens.put('(', OPEN_PARENTHESIS);
-        trivialTokens.put(')', CLOSE_PARENTHESIS);
-        trivialTokens.put('[', OPEN_SQUARE_BRACKET);
-        trivialTokens.put(']', CLOSE_SQUARE_BRACKET);
-        trivialTokens.put(' ', SPACE);
-        trivialTokens.put('\t', SPACE);
-        trivialTokens.put('\\', BACK_SLASH);
+        trivialTokens.put('%', TokenType.PERCENT);
+        trivialTokens.put(',', TokenType.COMMA);
+        trivialTokens.put('&', TokenType.AMP);
+        trivialTokens.put('|', TokenType.PIPE);
+        trivialTokens.put('+', TokenType.PLUS);
+        trivialTokens.put(':', TokenType.COLON);
+        trivialTokens.put('*', TokenType.STAR);
+        trivialTokens.put('(', TokenType.OPEN_PARENTHESIS);
+        trivialTokens.put(')', TokenType.CLOSE_PARENTHESIS);
+        trivialTokens.put('[', TokenType.OPEN_SQUARE_BRACKET);
+        trivialTokens.put(']', TokenType.CLOSE_SQUARE_BRACKET);
+        trivialTokens.put(' ', TokenType.SPACE);
+        trivialTokens.put('\t', TokenType.SPACE);
+        trivialTokens.put('\\', TokenType.BACK_SLASH);
     }
 
     Scanner(String source) {
@@ -67,7 +65,7 @@ class Scanner {
             start = current;
             scanToken();
         }
-        tokens.add(new Token(EOF, "", null, line));
+        tokens.add(new Token(TokenType.EOF, "", null, line));
         return tokens;
     }
 
@@ -80,42 +78,42 @@ class Scanner {
         }
         switch (c) {
             case '=':
-                addToken(match('=') ? EQUAL_TO : EQUALS);
+                addToken(match('=') ? TokenType.EQUAL_TO : TokenType.EQUALS);
                 break;
             case '<':
                 if (match('=')) {
-                    addToken(LESS_OR_EQUAL_TO);
+                    addToken(TokenType.LESS_OR_EQUAL_TO);
                 } else if (match('<')) {
-                    addToken(SHIFT_LEFT);
+                    addToken(TokenType.SHIFT_LEFT);
                 } else {
-                    addToken(LESS_THAN);
+                    addToken(TokenType.LESS_THAN);
                 }
                 break;
             case '>':
-                addToken(match('=') ? GREATER_OR_EQUAL_TO : GREATER_THAN);
+                addToken(match('=') ? TokenType.GREATER_OR_EQUAL_TO : TokenType.GREATER_THAN);
                 if (match('=')) {
-                    addToken(GREATER_OR_EQUAL_TO);
+                    addToken(TokenType.GREATER_OR_EQUAL_TO);
                 } else if (match('<')) {
-                    addToken(SHIFT_RIGHT);
+                    addToken(TokenType.SHIFT_RIGHT);
                 } else {
-                    addToken(GREATER_THAN);
+                    addToken(TokenType.GREATER_THAN);
                 }
                 break;
             case '-':
-                addToken(match('>') ? ARROW : MINUS);
+                addToken(match('>') ? TokenType.ARROW : TokenType.MINUS);
                 break;
             case '!':
                 if (peek() != '=') {
                     throw new RuntimeException("Expecting '=' on line " + line);
                 }
-                addToken(NOT_EQUAL_TO);
+                addToken(TokenType.NOT_EQUAL_TO);
                 break;
             case '"':
                 scanString();
                 if (peek() != '"') {
                     throw new RuntimeException("Expecting  '\"' on line " + line);
                 }
-                addToken(STRING, source.substring(start, current));
+                addToken(TokenType.STRING, source.substring(start, current));
                 advanceCurrent();
                 break;
             case '/':
@@ -123,11 +121,11 @@ class Scanner {
                 if (match('/')) {
                     advanceUntil('\n');
                 } else {
-                    addToken(SLASH);
+                    addToken(TokenType.SLASH);
                 }
                 break;
             case '\n':
-                addToken(NEW_LINE);
+                addToken(TokenType.NEW_LINE);
                 line++;
                 break;
             // ignores \r
@@ -164,7 +162,7 @@ class Scanner {
             advanceCurrent();
         }
         String text = source.substring(start, current);
-        addToken(keywords.getOrDefault(text, IDENTIFIER));
+        addToken(keywords.getOrDefault(text, TokenType.IDENTIFIER));
     }
 
     private char peekNext() {
@@ -189,14 +187,14 @@ class Scanner {
             while (isHex(peek())) {
                 advanceCurrent();
             }
-            addToken(NUMBER, Integer.parseInt(source.substring(start + 2, current), 16));
+            addToken(TokenType.NUMBER, Integer.parseInt(source.substring(start + 2, current), 16));
             return;
         }
 
         while (isDigit(peek()) || peek() == '_') {
             advanceCurrent();
         }
-        addToken(NUMBER, Integer.parseInt(source.substring(start, current)));
+        addToken(TokenType.NUMBER, Integer.parseInt(source.substring(start, current)));
     }
 
     private boolean isHex(char c) {

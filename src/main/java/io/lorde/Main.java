@@ -1,4 +1,4 @@
-package org.example;
+package io.lorde;
 
 import java.util.List;
 

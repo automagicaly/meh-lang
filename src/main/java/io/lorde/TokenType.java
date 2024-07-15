@@ -1,4 +1,4 @@
-package org.example;
+package io.lorde;
 
 public enum TokenType {
     // operators
