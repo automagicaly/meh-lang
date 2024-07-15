@@ -29,6 +29,13 @@ class Scanner {
         keywords.put("bool", BOOL);
         keywords.put("true", TRUE);
         keywords.put("false", FALSE);
+        keywords.put("byte", BYTE);
+        keywords.put("float", FLOAT);
+        keywords.put("double", DOUBLE);
+        keywords.put("file", FILE);
+        keywords.put("as", AS);
+        keywords.put("is", IS);
+        keywords.put("any", ANY);
 
         trivialTokens = new HashMap<>();
         trivialTokens.put('%', PERCENT);
