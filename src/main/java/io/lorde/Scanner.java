@@ -34,6 +34,7 @@ class Scanner {
         keywords.put("as", TokenType.AS);
         keywords.put("is", TokenType.IS);
         keywords.put("any", TokenType.ANY);
+        keywords.put("int", TokenType.INTEGER);
 
         trivialTokens = new HashMap<>();
         trivialTokens.put('%', TokenType.PERCENT);
@@ -90,10 +91,9 @@ class Scanner {
                 }
                 break;
             case '>':
-                addToken(match('=') ? TokenType.GREATER_OR_EQUAL_TO : TokenType.GREATER_THAN);
                 if (match('=')) {
                     addToken(TokenType.GREATER_OR_EQUAL_TO);
-                } else if (match('<')) {
+                } else if (match('>')) {
                     addToken(TokenType.SHIFT_RIGHT);
                 } else {
                     addToken(TokenType.GREATER_THAN);
@@ -119,7 +119,7 @@ class Scanner {
             case '/':
                 // ignore comments
                 if (match('/')) {
-                    advanceUntil('\n');
+                    advanceUntilNewLine();
                 } else {
                     addToken(TokenType.SLASH);
                 }
@@ -143,6 +143,7 @@ class Scanner {
     }
 
     private void scanString() {
+        start++; // get rid of the first "
         while (!isAtEnd() && peek() != '"') {
            if (peek() == '\\' && peekNext() == '"') {
                 advanceCurrent();
@@ -151,8 +152,8 @@ class Scanner {
         }
     }
 
-    private void advanceUntil(char c) {
-        while (!isAtEnd() && peek() != c) {
+    private void advanceUntilNewLine() {
+        while (!isAtEnd() && peek() != '\n') {
             advanceCurrent();
         }
     }
@@ -170,6 +171,13 @@ class Scanner {
         return source.charAt(current + 1);
     }
 
+    private char peekPrevious() {
+        if (current == 0) {
+            return '\0';
+        }
+        return source.charAt(current - 1);
+    }
+
     private boolean isAlphaNumeric(char c) {
         return isDigit(c) || isAlpha(c);
     }
@@ -181,20 +189,33 @@ class Scanner {
     }
 
     private void scanNumber() {
-        if (peek() == '0' && peekNext() == 'x') {
+        if (peekPrevious() == '0' && peek() == 'x') {
             advanceCurrent();
             advanceCurrent();
             while (isHex(peek())) {
                 advanceCurrent();
             }
-            addToken(TokenType.NUMBER, Integer.parseInt(source.substring(start + 2, current), 16));
+            addToken(TokenType.NUMBER_HEX_INTEGER, Integer.parseInt(source.substring(start + 2, current), 16));
             return;
         }
 
         while (isDigit(peek()) || peek() == '_') {
             advanceCurrent();
         }
-        addToken(TokenType.NUMBER, Integer.parseInt(source.substring(start, current)));
+
+        if (peek() == '.') {
+            advanceCurrent();
+            if (! isDigit(peek())) {
+                throw new RuntimeException("Expecting rest of the float/double number");
+            }
+            while (isDigit(peek()) || peek() == '_') {
+                advanceCurrent();
+            }
+            addToken(TokenType.NUMBER_FLOAT, Double.parseDouble(source.substring(start, current)));
+            return;
+        }
+
+        addToken(TokenType.NUMBER_INTEGER, Integer.parseInt(source.substring(start, current)));
     }
 
     private boolean isHex(char c) {

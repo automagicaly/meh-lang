@@ -5,13 +5,13 @@
 * Generate byte-code/class file/jars so the program can run on the JVM
 * Implement default library in Java
 * Program runs from top to bottom like Python
-* Not use Java as a intermediary language
+* Not use Java as an intermediary language
 
 ## Non-Objectives
 * Implement an extensive default library
 * Integration with java
 * Networking
-* Multi-threading\size_of arr: void[] -> int
+* Multi-threading
 * Argument parsing
 * Reading resources from JAR
 * DB connections/drivers
@@ -26,8 +26,10 @@
 ## Lexicon
 ```
 KEYWORDS = let|\|return|if|else|and|or|not|int|str|void|bool|true|false|byte|float|double|file|as|is
-NUMBER = [1-9][0-9_]*
-STRING = ".*"  # take care of scaped characters
+NUMBER_INTEGER = [1-9][0-9_]*
+NUMBER_HEX_INTEGER = 0x[0-9A-Fa-f]+
+NUMBER_FLOAT = [1-9][0-9_]*[.][0-9][0-9_]*
+STRING = .*  # take care of scaped characters
 OPERATIONS = [%+*/&|,=()><:-]|->|[|]|<=|>=|==|!=|>>|<<
 IDENTIFIER = [a-zA-Z_-][a-zA-Z_0-9-]*
 NEW_LINE = \n
@@ -36,36 +38,47 @@ SPACE = [ \t]
 
 ## Grammar
 ```
-S = 'let' SPACE+ IDENTIFIER OPTIONAL_TYPE SPACE* '=' SPACE* EXPR NEW_LINE
-S = EXPR SPACE* NEW_LINE
-S = 'return' SPACE+ EXPR SPACE* NEW_LINE
+S = S S
+S = 'let' SPACE+ IDENTIFIER OPTIONAL_TYPE SPACE* '=' SPACE* EXPR END
+S = EXPR SPACE* END
+S = 'return' SPACE+ EXPR SPACE* END
 S = 'if' SPACE+ EXPR NEW_LINE BODY | 'if' SPACE+ EXPR NEW_LINE BODY 'else' NEW_LINE BODY
 S = '\' IDENTIFIER SPACE+ PARAM* '->' SPACE+ TYPE SPACE* NEW_LINE BODY
 ARRAY_TYPES = BASE_TYPES '[]'
 BASE_TYPES = 'bool' |'int' | 'str' | 'byte' | 'float' | 'double' | 'file' | 'void' | 'any'
 BODY = SPACE+ S BODY | _
+BOOL = 'true' | 'false'
+BINARY_EXPR = EXPR OP EXPR
 CAST = EXPR SPACE+ 'as' SPACE+ TYPE
-EXPR = LITERAL|IDENTIFIER|INDEXED_IDENTIFIER|'(' EXPR ')'|EXPR OP EXPR|SAPCE* EXPR SPACE*|FUNTION_CALL|LAMBDA|CAST|TYPE_CHECK|''
+END = NEW_LINE | EOF
+EXPR = LITERAL|IDENTIFIER|INDEXED_IDENTIFIER|GROUPING|BINARY_EXPR|FUNTION_CALL|LAMBDA|CAST|TYPE_CHECK|UNARY_EXPR
+FLOAT = [1-9][0-9_]* '.' [0-9][0-9_]*
 FUNCTION_CALL = IDENTIFIER SPACE+ FUN_VAL | '(' LAMBDA ')' SPACE+ FUN_VAL
 FUN_VAL = EXPR SPACE+ FUN_VAL | EXPR | _
+GROUPING = '(' EXPR ')'
+HEX_INTEGER = '0x' [0-9A-Fa-f]+  
+IDENTED_EXPR = SAPCE* EXPR SPACE*
 IDENTIFIER = [a-zA-Z_-][a-zA-Z_0-9-]*
 INDEXED_IDENTIFIER = IDENTIFIER '[' EXPR ']'
+INTEGER = [0-9][0-9_]* 
 LAMBDA = '\' LAMBDA_VAR '->' SPACE+ EXPR
-LAMBDA_ARG_TYPES = TYPE SPACE+ LAMBDA_ARG_TYPES | TYPE 
-LAMBDA_VAR = IDENTIFIER SPACE+ LAMBDA_VAR | _
+LAMBDA_ARG_TYPES = TYPE SPACE+ LAMBDA_ARG_TYPES | TYPE | _
+LAMBDA_VAR = IDENTIFIER OPTIONAL_TYPE SPACE+ LAMBDA_VAR | _
 LIST_LITERAL = '[' SPACE* NEW_LINE? LIST_ITEMS SPACE* NEW_LINE ']'
 LIST_ITEMS = EXPR | EXPR ',' SPACE* NEW_LINE? LIST_ITEMS | _ 
-LITERAL = NUMBER|STRING|LIST_LITERAL
+LITERAL = NUMBER|STRING|BOOL|LIST_LITERAL
 NEW_LINE = '\n'
-NUMBER = [0-9][0-9_]* | '0x' [0-9A-Fa-f]+ 
-OP = '+'|'-'|'*'|'/'|'&'|'|'|'<'|'<='|'<<'|'>'|'>='|'>>'|'=='|'!='|'and'|'or'|'not'|'%'
-OPTIONAL_TYPE = SPACE* ':' SPACE*
+NUMBER = INTEGER | FLOAT | HEX_INTEGER
+OP = '+'|'-'|'*'|'/'|'&'|'|'|'<'|'<='|'<<'|'>'|'>='|'>>'|'=='|'!='|'and'|'or'|'%'
+OPTIONAL_TYPE = SPACE* ':' TYPE SPACE* | _
 PARAM = VAR_DEC SPACE+ PARAM | _
 SCAPED_STRING = SCAPED_STRING '\"' SCAPED_STRING | [^"] SCAPED_STRING | _
 SPACE = ' '|'\t'
 STRING = '"' SCAPED_STRING '"'
 TYPE = BASE_TYPES | ARRAY_TYPES | '(' SPACE* '\' LAMBDA_ARG_TYPES SPACE+ '->' SPACE+ TYPE SPACE* ')'
 TYPE_CHECK = EXPR SPACE+ 'is' SPACE+ TYPE
+UNARY_EXPR = UNARY_OP EXPR
+UNARY_OP = 'not' | '-' | '+'
 VAR_DEC = IDENTIFIER SPACE* ':' SPACE* TYPE
 ```
 
@@ -156,7 +169,7 @@ print to_string (a as int[])  // [1 3]
 ```
 
 ### map
-Maps a array into another array.
+Maps an array into another array.
 
 **Definition:**
 ```
@@ -436,13 +449,13 @@ print ((((0x0 | 0xF0) & 0x80) << 1) == 0)
 
 let x = (\i -> i ) 42
 
-\filter list: int[] should_add: (\int -> bool) -> int[]
+\filter list: int[] predicate: (\int -> bool) -> int[]
     if is_empty list
         return []
-    if should_add list[0]
-        return concat [list[0]] (filter (tail list) should_add)
+    if predicate list[0]
+        return concat [list[0]] (filter (tail list) predicate)
     else
-        return filter (tail list) should_add
+        return filter (tail list) predicate
         
 print filter [ 1, 2 ,3 ] is_odd
 ```
