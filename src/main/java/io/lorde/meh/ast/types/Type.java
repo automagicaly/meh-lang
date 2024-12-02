@@ -1,6 +1,6 @@
 package io.lorde.meh.ast.types;
 
-public abstract sealed class Type permits AnyType, ArrayType, BooleanType, ByteType, DoubleType, FileType, FloatType, IntegerType, LambdaType, StringType, VoidType {
+public abstract sealed class Type permits AnyType, ArrayType, BooleanType, ByteType, DeferredType, DoubleType, FileType, FloatType, IntegerType, LambdaType, StringType, VoidType {
     abstract public <T> T accept(TypeVisitor<T> visitor);
 
     public String friendlyName() {

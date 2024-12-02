@@ -1,26 +1,22 @@
 package io.lorde.meh.ast.expressions;
 
 import io.lorde.meh.Token;
+import io.lorde.meh.ast.statements.Context;
 
 import java.util.List;
 import java.util.Optional;
 
 public final class FunctionCall extends Expression {
     private final Token name;
-    private final Lambda lambda;
-    public List<Expression> arguments;
+    public final List<Expression> arguments;
 
-    public FunctionCall(Token name, Lambda lambda, List<Expression> arguments) {
-        this.name = name;
-        this.lambda = lambda;
-        this.arguments = arguments;
-    }
-
-    public Optional<Lambda> getLambda() {
-        if (this.lambda ==  null) {
-            return Optional.empty();
+    public FunctionCall(Expression function, List<Expression> arguments) {
+        if (function instanceof Reference ref) {
+            this.name = ref.identifier;
+        } else {
+            name = null;
         }
-        return Optional.of(this.lambda);
+        this.arguments = arguments;
     }
 
     public Optional<Token> getName() {

@@ -104,7 +104,13 @@ Comments starts with `//`
 * any[] -> array of values
 
 ## Casting
-Every type is compatible with `any` without casting. You can cast anything using `as` e.g. `let a: int = 2.3 as int`.
+Every type is compatible with `any` without casting. 
+Types `String`, `Void`, `File`, `Lambda` are not castable.
+Array types can be cast to other array types only if their base types are compatible.
+Any numeric type can be converted into any other numeric type.
+Boolean and Numeric types can be casted into each other.
+Castable types can be casted into themselves.
+You can cast anything using `as` e.g. `let a: int = 2.3 as int`.
 
 ## Array Literal
 While inferring the type of array of numbers  unless explicitly expressed numbers with decimal places will be treated as `doubles`.

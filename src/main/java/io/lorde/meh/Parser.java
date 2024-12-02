@@ -15,25 +15,24 @@ public class Parser {
     private final List<Token> tokens;
     private int current;
     private final Stack<Context> contextStack;
-    private final Set<String> globalVariables;
     private boolean isEmptyLine;
 
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
         this.current = 0;
-        this.globalVariables = new HashSet<>();
         this.contextStack = new Stack<>();
-        contextStack.push(new Context(globalVariables, 0));
+        contextStack.push(new Context(null, 0));
         this.isEmptyLine = false;
+    }
+
+    public Context globalContext() {
+        return this.contextStack.getFirst();
     }
 
     public Program parse() {
         Program program = new Program();
         while (!isAtEnd()) {
             Statement statement = statement();
-            if (statement instanceof VariableDeclaration) {
-                globalVariables.add(((VariableDeclaration) statement).name.lexeme());
-            }
             program.statements.add(statement);
             skipSpacesAndNewLines();
         }
@@ -65,23 +64,19 @@ public class Parser {
     }
 
     private void openContext() {
-        contextStack.push(new Context(new HashSet<>(contextStack.peek().variables), contextStack.peek().indentation));
+        contextStack.push(new Context(contextStack.peek(), contextStack.peek().indentation));
     }
 
     private void closeContext() {
         contextStack.pop();
     }
 
-    private void addVariable(String name) {
-        contextStack.peek().variables().add(name);
-    }
-
     private void setIndentation(int i) {
-        contextStack.push(contextStack.pop().setIndentation(i));
+        contextStack.peek().indentation = i;
     }
 
     private boolean hasVariable(String name) {
-        return contextStack.peek().variables.contains(name);
+        return this.contextStack.peek().get(name) != null;
     }
 
     private int contextIndentation() {
@@ -99,9 +94,7 @@ public class Parser {
             consume(COLON, "Missing ':'");
             skipSpaces();
             Type type = type();
-            if (!(type instanceof LambdaType)) {
-                addVariable(identifier);
-            }
+            contextStack.peek().set(identifier, type);
             skipSpaces();
             parameters.add(new FunctionParameter(identifier, type));
         }
@@ -111,8 +104,10 @@ public class Parser {
         skipSpaces();
         consume(NEW_LINE, "Missing '\\n'");
         Body body = body();
+        var fx =  new FunctionDeclaration(name, parameters, body, returnType, contextStack.peek());
         closeContext();
-        return new FunctionDeclaration(name, parameters, body, returnType);
+        contextStack.peek().set(name.lexeme(), fx);
+        return fx;
     }
 
     private Statement returnStatement() {
@@ -163,22 +158,16 @@ public class Parser {
         skipSpaces();
         Expression expr = expression();
         skipSpaces();
-        if (expr instanceof Lambda) {
-            List<Expression> args = new ArrayList<>();
-            for (int i = 0; i < ((Lambda) expr).parameters.size(); i++) {
-                args.add(expression());
-                skipSpaces();
-            }
-            expr = new FunctionCall(null, (Lambda) expr, args);
-        }
         consume(NEW_LINE, "Missing new line character");
-        return new VariableDeclaration(identifier, type, expr);
+        var v = new VariableDeclaration(identifier, type, expr);
+        contextStack.peek().set(identifier().lexeme(), v);
+        return v;
     }
 
 
     private Type optionalType() {
         if (!match(COLON)) {
-           return null;
+           return new DeferredType();
         }
         skipSpaces();
         return type();
@@ -262,6 +251,7 @@ public class Parser {
     }
 
     private Body body() {
+        openContext();
         int targetIndentation = indentation();
         if (targetIndentation == 0) {
             throw Meh.error(peek(), "Missing indentation");
@@ -275,22 +265,13 @@ public class Parser {
             }
             match(NEW_LINE);
         }
-        return new Body(statements);
+        var b = new Body(statements, contextStack.peek());
+        closeContext();
+        return b;
     }
 
 
     private Expression expression() {
-        if (check(IDENTIFIER) && !hasVariable(peek().lexeme())) {
-            Token identifier = identifier();
-            skipSpaces();
-            List<Expression> args = new ArrayList<>();
-            while (!check(NEW_LINE) && !check(EOF) && !check(CLOSE_PARENTHESIS) && !check(COMMA) && !check(CLOSE_SQUARE_BRACKET)){
-                args.add(expression());
-                skipSpaces();
-            }
-            return new FunctionCall(identifier, null, args);
-        }
-
         /*
          * or
          * and
@@ -304,7 +285,9 @@ public class Parser {
          * + -
          * unary + -
          * as is
-         * numbers, strings, true, false, ( expr ), void, [ expr, expr, ...]
+         * function call
+         * indexed expression
+         * numbers, strings, true, false, ( expr ), void, [ expr, expr, ...], reference
          */
         return orExpression();
     }
@@ -443,7 +426,7 @@ public class Parser {
     }
 
     private Expression typeExpression() {
-        Expression expr = literalAndGroupingExpression();
+        Expression expr = functionCallExpression();
         skipSpaces();
         if (match(AS)) {
             Token keyword = previous();
@@ -453,6 +436,37 @@ public class Parser {
         if (match(IS)) {
             skipSpaces();
             return new TypeCheck(expr, type());
+        }
+        return expr;
+    }
+
+    private Expression functionCallExpression() {
+        Expression expr = indexedExpression();
+        if (expr instanceof Reference
+                || expr instanceof IndexedExpression
+                || expr instanceof Lambda
+                || expr instanceof Grouping
+        ) {
+            skipSpaces();
+            List<Expression> args = new ArrayList<>();
+            while (!check(NEW_LINE) && !check(EOF) && !check(CLOSE_PARENTHESIS) && !check(COMMA) && !check(CLOSE_SQUARE_BRACKET)){
+                args.add(expression());
+                skipSpaces();
+            }
+            return new FunctionCall(expr, args);
+
+        }
+        return expr;
+    }
+
+    private Expression indexedExpression() {
+        Expression expr = literalAndGroupingExpression();
+        if (match(OPEN_SQUARE_BRACKET)){
+            skipSpaces();
+            Expression index = expression();
+            skipSpaces();
+            consume(CLOSE_SQUARE_BRACKET, "Missing ']'");
+            expr = new IndexedExpression(expr, index);
         }
         return expr;
     }
@@ -474,14 +488,7 @@ public class Parser {
             return new Literal(null, new VoidType());
         }
         if (check(IDENTIFIER)) {
-            Reference ref = new Reference(identifier());
-            if (match(OPEN_SQUARE_BRACKET)) {
-                Expression expr = expression();
-                skipSpaces();
-                consume(CLOSE_SQUARE_BRACKET, "Missing ']'");
-                return new IndexedExpression(ref, expr);
-            }
-            return ref;
+            return new Reference(identifier());
         }
         if (match(OPEN_PARENTHESIS)) {
             if (match(BACK_SLASH)) {
@@ -492,10 +499,11 @@ public class Parser {
                     Token identifier = identifier();
                     skipSpaces();
                     Type type = optionalType();
-                    skipSpaces();
-                    if (!(type instanceof LambdaType)) {
-                        addVariable(identifier.lexeme());
+                    if (type == null) {
+                        type = new AnyType();
                     }
+                    contextStack.peek().set(identifier.lexeme(), type);
+                    skipSpaces();
                     parameters.add(new FunctionParameter(identifier.lexeme(), type));
                 }
                 consume(ARROW, "Missing '->'");
@@ -515,7 +523,7 @@ public class Parser {
                     args.add(expression());
                     skipSpaces();
                 }
-                expr = new FunctionCall(null, l, args);
+                expr = new FunctionCall(expr, args);
             }
             consume(CLOSE_PARENTHESIS, "Missing ')'");
             return new Grouping(expr);
@@ -596,16 +604,5 @@ public class Parser {
 
     private boolean isAtEnd() {
         return  peek().type() == EOF;
-    }
-
-    private record Context(Set<String> variables, int indentation) {
-        public Context setIndentation(int i) {
-            return deepCopy(i);
-        }
-
-        private Context deepCopy(int i) {
-            return new Context(variables, i);
-        }
-
     }
 }

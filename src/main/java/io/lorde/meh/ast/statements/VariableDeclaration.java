@@ -8,20 +8,13 @@ import java.util.Optional;
 
 public final class VariableDeclaration extends Statement {
     public final Token name;
-    private final Type type;
+    public Type type;
     public final Expression value;
 
     public VariableDeclaration(Token name, Type type, Expression value) {
         this.name = name;
         this.type = type;
         this.value = value;
-    }
-
-    public Optional<Type> getType() {
-        if (this.type == null) {
-            return Optional.empty();
-        }
-        return Optional.of(this.type);
     }
 
     @Override

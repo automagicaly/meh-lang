@@ -12,4 +12,5 @@ public interface TypeVisitor<T> {
     T visit(LambdaType lambdaType);
     T visit(StringType stringType);
     T visit(VoidType voidType);
+    T visit(DeferredType deferredType);
 }

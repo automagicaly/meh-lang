@@ -1,6 +1,7 @@
 package io.lorde.meh;
 
 import io.lorde.meh.ast.Program;
+import io.lorde.meh.ast.TypeChecker;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -37,6 +38,7 @@ public class Meh {
             List<Token> tokens = lexer.scanTokens();
             Parser parser = new Parser(tokens);
             Program program = parser.parse();
+            TypeChecker typeChecker = new TypeChecker(parser.globalContext());
             System.out.println(program.accept(new AstPrinter()));
         }
     }
@@ -61,7 +63,9 @@ public class Meh {
         }
     }
 
-    public static class ParserError extends RuntimeException {}
+    public static class ParserError extends RuntimeException {
+
+    }
 
     public static ParserError error(Token token, String errorMessage) {
         // TODO better error reporting
